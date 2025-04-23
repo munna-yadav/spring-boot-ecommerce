@@ -7,6 +7,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -22,8 +23,8 @@ public class Cart {
 
 
     @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "customer_id")
-    private Customer customer;
+    @JoinColumn(name = "user_id") // Changed from customer_id to user_id
+    private Users user; // Changed from Customer to Users
 
     @OneToMany(mappedBy = "cart", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<CartItem> cartItems = new ArrayList<>();
@@ -58,13 +59,14 @@ public class Cart {
     public Order checkout(OrderStatus status, String shippingAddress, String paymentMethod){
         Order order = new Order();
 
-        order.setCustomer(customer);
+        order.setCustomer(user); // No need to cast to Customer anymore
         order.setStatus(status);
         order.setShippingAddress(shippingAddress);
-        order.setShippingAddress(paymentMethod);
+        order.setPaymentMethod(paymentMethod);
+        order.setOrderDate(LocalDateTime.now());
 
         for (CartItem cartItem: cartItems){
-            OrderItem  orderItem = new OrderItem();
+            OrderItem orderItem = new OrderItem();
             orderItem.setProduct(cartItem.getProduct());
             orderItem.setPrice(cartItem.getProduct().getPrice());
             orderItem.setQuantity(cartItem.getQuantity());

@@ -1,8 +1,7 @@
 package com.example.ecommerce.ecommerce.Controller;
 
 import com.example.ecommerce.ecommerce.Dto.auth.LoginRequestDto;
-import com.example.ecommerce.ecommerce.Entity.Admin;
-import com.example.ecommerce.ecommerce.Entity.Customer;
+import com.example.ecommerce.ecommerce.Entity.Users;
 import com.example.ecommerce.ecommerce.Services.AuthService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -19,26 +18,17 @@ public class AuthController {
 
     @PostMapping("/register")
     public ResponseEntity<?> registerCustomer(
-            @ModelAttribute Customer customer,
+            @ModelAttribute Users user,
             @RequestParam(value = "image",required = false )MultipartFile imageFile){
 
-        return authService.registerCustomer(customer, imageFile);
+        return authService.registerUser(user, imageFile);
     }
 
-    @PostMapping("/register/admin")
-    public ResponseEntity<?> registerAdmin(@RequestBody Admin admin){
-        System.out.println("welcome to admin page");
-        return authService.registerAdmin(admin);
-    }
 
     @PostMapping("/login")
     public ResponseEntity<?> loginCustomer(@Validated @RequestBody LoginRequestDto loginRequestDto){
-        return authService.loginCustomer(loginRequestDto);
+        return authService.login(loginRequestDto);
     }
 
-    @PostMapping("/login/admin")
-    public ResponseEntity<?> loginAdmin(@Validated @RequestBody  LoginRequestDto dto){
-        System.out.println("Admin login"+ dto);
-        return authService.loginAdmin(dto);
-    }
+
 }
