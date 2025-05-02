@@ -39,27 +39,31 @@ public class AuthService {
     @Autowired LoginResponseDto responseDto;
 
 
-    public ResponseEntity<?> registerUser(Users user, MultipartFile imageFile){
+    public ResponseEntity<?> registerUser(Users user){
+
+        if (user.getUsername() == null || user.getEmail() == null  || user.getName() == null){
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("message","All fields required"));
+        }
 
         if (userRepository.existsByUsername(user.getUsername())){
-            return ResponseEntity.status(HttpStatus.CONFLICT).body("user with the username exist");
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("message","user with the username exist"));
         }
 
         if (userRepository.existsByEmail(user.getEmail())){
-            return ResponseEntity.status(HttpStatus.CONFLICT).body("User with email already Registered");
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("message","User with email already Registered"));
         }
-        user.setUsername(user.getUsername().toLowerCase(Locale.ROOT));
+        user.setUsername(user.getUsername().toLowerCase());
         user.setRole(user.getRole());
         // upload image to cloudinary if provided
-        if (imageFile != null && !imageFile.isEmpty()) {
-            try {
-                Map<?, ?> result = cloudinary.uploader().upload(imageFile.getBytes(), Map.of());
-                user.setImage(result.get("secure_url").toString());
-            } catch (IOException e) {
-                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                        .body("Image upload failed");
-            }
-        }
+//        if (imageFile != null && !imageFile.isEmpty()) {
+//            try {
+//                Map<?, ?> result = cloudinary.uploader().upload(imageFile.getBytes(), Map.of());
+//                user.setImage(result.get("secure_url").toString());
+//            } catch (IOException e) {
+//                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+//                        .body("Image upload failed");
+//            }
+//        }
         user.setPassword(passwordEncoder.encode(user.getPassword()));
         Users saved = userRepository.save(user);
         CustomerDto dto = modelMapper.map(saved,CustomerDto.class);
@@ -69,9 +73,10 @@ public class AuthService {
     }
 
     public ResponseEntity<?> login(LoginRequestDto dto) {
+        System.out.println(dto);
 
         if (dto.getEmailOrUsername() == null || dto.getPassword() == null) {
-            return ResponseEntity.badRequest().body("Username/email and password must not be null");
+            return ResponseEntity.badRequest().body(Map.of("message","All fields required"));
         }
         String identifier = dto.getEmailOrUsername().trim();
         String password = dto.getPassword();
@@ -79,14 +84,14 @@ public class AuthService {
 
         Optional<Users> optionalUser = userRepository.findByEmailOrUsername(identifier, identifier);
         if (optionalUser.isEmpty()) {
-            return ResponseEntity.status(404).body("Invalid username or email");
+            return ResponseEntity.status(404).body(Map.of("message","Invalid username or email"));
         }
 
         Users user = optionalUser.get();
 
         // ✅ FIXED password check
         if (!passwordEncoder.matches(password, user.getPassword())) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid password");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message","Invalid password"));
         }
 
         // ✅ Generate JWT token

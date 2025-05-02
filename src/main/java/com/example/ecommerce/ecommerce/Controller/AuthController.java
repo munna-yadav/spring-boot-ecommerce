@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.service.annotation.GetExchange;
 
 @RestController
 @RequestMapping("/api/v1/auth")
@@ -18,10 +19,9 @@ public class AuthController {
 
     @PostMapping("/register")
     public ResponseEntity<?> registerCustomer(
-            @ModelAttribute Users user,
-            @RequestParam(value = "image",required = false )MultipartFile imageFile){
+            @RequestBody Users user){
 
-        return authService.registerUser(user, imageFile);
+        return authService.registerUser(user);
     }
 
 

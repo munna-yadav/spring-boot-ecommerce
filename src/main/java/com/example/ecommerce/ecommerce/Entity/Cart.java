@@ -1,6 +1,7 @@
 package com.example.ecommerce.ecommerce.Entity;
 
 import com.example.ecommerce.ecommerce.Enum.OrderStatus;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -10,6 +11,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 @Data
 @AllArgsConstructor
@@ -23,8 +25,8 @@ public class Cart {
 
 
     @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id") // Changed from customer_id to user_id
-    private Users user; // Changed from Customer to Users
+    @JoinColumn(name = "user_id")
+    private Users user;
 
     @OneToMany(mappedBy = "cart", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<CartItem> cartItems = new ArrayList<>();
@@ -59,7 +61,7 @@ public class Cart {
     public Order checkout(OrderStatus status, String shippingAddress, String paymentMethod){
         Order order = new Order();
 
-        order.setCustomer(user); // No need to cast to Customer anymore
+        order.setCustomer(user);
         order.setStatus(status);
         order.setShippingAddress(shippingAddress);
         order.setPaymentMethod(paymentMethod);
@@ -76,4 +78,16 @@ public class Cart {
         return order;
     }
 
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Cart cart = (Cart) o;
+        return Objects.equals(id, cart.id); // Only use ID
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(id); // Only use ID
+    }
 }

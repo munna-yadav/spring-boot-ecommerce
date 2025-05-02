@@ -1,7 +1,9 @@
 package com.example.ecommerce.ecommerce.Entity;
 
 import com.example.ecommerce.ecommerce.Enum.OrderStatus;
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -42,7 +44,8 @@ public class Order {
     @JoinColumn(name = "user_id", nullable = false)
     private Users customer;
 
-    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL,orphanRemoval = true)
+    @JsonBackReference
     private List<OrderItem> orderItems = new ArrayList<>();
 
 

@@ -19,7 +19,7 @@ public class CustomerDto {
     private String phone;
     private String address;
     private String role;
-    private String profileImageUrl;
+    private String image;
     private LocalDateTime createdAt;
 
 

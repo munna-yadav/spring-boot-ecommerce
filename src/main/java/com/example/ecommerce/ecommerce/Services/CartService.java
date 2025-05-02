@@ -2,6 +2,7 @@ package com.example.ecommerce.ecommerce.Services;
 
 import com.example.ecommerce.ecommerce.Dto.Cart.CartResponse;
 import com.example.ecommerce.ecommerce.Dto.Cart.OrderDTO;
+import com.example.ecommerce.ecommerce.Dto.Cart.OrderItemDTO;
 import com.example.ecommerce.ecommerce.Entity.*;
 import com.example.ecommerce.ecommerce.Enum.OrderStatus;
 import com.example.ecommerce.ecommerce.Repository.*;
@@ -11,13 +12,13 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-
 
 @Service
 public class CartService {
@@ -160,6 +161,7 @@ public class CartService {
 
             // Create a new CartResponse object for each item
             CartResponse response = new CartResponse();
+            response.setImage(item.getProduct().getImage());
             response.setQuantity(item.getQuantity());
             response.setPrice(item.getProduct().getPrice());
             response.setProduct(item.getProduct().getName());
@@ -175,8 +177,8 @@ public class CartService {
         ));
     }
 
+    @Transactional
     public ResponseEntity<?> checkout(){
-
         String username = SecurityContextHolder.getContext().getAuthentication().getName();
         Optional<Users> optionalUser = userRepository.findByUsername(username);
         if (optionalUser.isEmpty()){
@@ -184,18 +186,80 @@ public class CartService {
         }
 
         Users user = optionalUser.get();
-
-        // get the user cart;
-
         Cart userCart = user.getCart();
+        
+        if (userCart == null || userCart.getCartItems().isEmpty()) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Cart is empty");
+        }
+        
+        // Check stock availability
+        for (CartItem item : userCart.getCartItems()) {
+            Product product = item.getProduct();
+            if (product.getStockQuantity() < item.getQuantity()) {
+                return ResponseEntity.badRequest().body(
+                    "Not enough stock for " + product.getName() + 
+                    ". Available: " + product.getStockQuantity() + 
+                    ", Requested: " + item.getQuantity());
+            }
+        }
 
-        // TODO ensure all the products in cart are available during checkout
-
-        Order order = userCart.checkout(OrderStatus.PENDING,user.getAddress(),"cash");
-        order.setCustomer(user);
+        // Create the order
+        Order order = userCart.checkout(OrderStatus.PENDING, user.getAddress(), "cash");
+        
+        // Update product stock quantities
+        for (OrderItem item : order.getOrderItems()) {
+            Product product = item.getProduct();
+            int newStock = product.getStockQuantity() - item.getQuantity();
+            product.setStockQuantity(newStock);
+        }
+        
+        // Save the order first
         orderRepository.save(order);
-        OrderDTO dto = modelMapper.map(order,OrderDTO.class);
+        
+        // Now clear the cart in a separate transaction
+        clearCart(userCart);
 
-        return ResponseEntity.ok(Map.of("order",dto));
+        // Create DTO without circular references
+        OrderDTO dto = createOrderDTO(order, user);
+        
+        return ResponseEntity.ok(Map.of(
+                "message", "Order placed successfully",
+                "order", dto
+        ));
+    }
+
+    @Transactional
+    private void clearCart(Cart userCart) {
+        List<CartItem> cartItems = new ArrayList<>(userCart.getCartItems());
+        for (CartItem item : cartItems) {
+            userCart.removeCartItem(item);
+            cartItemRepository.delete(item);
+        }
+        cartRepository.save(userCart);
+    }
+
+    private OrderDTO createOrderDTO(Order order, Users user) {
+        OrderDTO dto = new OrderDTO();
+        dto.setId(order.getId());
+        dto.setOrderDate(order.getOrderDate());
+        dto.setTotalAmount(order.getTotalAmount());
+        dto.setStatus(order.getStatus());
+        dto.setShippingAddress(order.getShippingAddress());
+        dto.setPaymentMethod(order.getPaymentMethod());
+        dto.setCustomerName(user.getUsername());
+        dto.setCustomerEmail(user.getEmail());
+        
+        // Map order items
+        for (OrderItem item : order.getOrderItems()) {
+            OrderItemDTO itemDTO = new OrderItemDTO();
+            itemDTO.setId(item.getId());
+            itemDTO.setProductName(item.getProduct().getName());
+            itemDTO.setQuantity(item.getQuantity());
+            itemDTO.setPrice(item.getPrice());
+            itemDTO.setTotal(item.getPrice().multiply(BigDecimal.valueOf(item.getQuantity())));
+            dto.getItems().add(itemDTO);
+        }
+        
+        return dto;
     }
 }

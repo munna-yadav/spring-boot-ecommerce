@@ -6,12 +6,14 @@ import com.example.ecommerce.ecommerce.Dto.customer.UpdateCustomerRequest;
 import com.example.ecommerce.ecommerce.Entity.Users;
 import com.example.ecommerce.ecommerce.Repository.UserRepository;
 import io.jsonwebtoken.Claims;
+import jakarta.persistence.Table;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.transaction.Transactional;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -80,7 +82,7 @@ public class UserService {
 
     @Transactional
     public ResponseEntity<?> updateProfile(UpdateCustomerRequest dto){
-        String username = extractUsernameFromToken();
+        String username = SecurityContextHolder.getContext().getAuthentication().getName();
         Optional<Users> optionalUsers = userRepository.findByUsername(username);
         if (optionalUsers.isEmpty()){
             ResponseEntity.status(HttpStatus.UNAUTHORIZED);
@@ -147,5 +149,16 @@ public class UserService {
 
         return ResponseEntity.status(HttpStatus.OK).body(user.getImage());
 
+    }
+
+    @Transactional
+    public ResponseEntity<?>getUser(){
+        String username = SecurityContextHolder.getContext().getAuthentication().getName();
+        Optional<Users> optionalUser = userRepository.findByUsername(username);
+        if (optionalUser.isEmpty()){
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message","User not authorized"));
+        }
+        Users user = optionalUser.get();
+        return ResponseEntity.ok(modelMapper.map(user, CustomerDto.class));
     }
 }
